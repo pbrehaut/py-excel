@@ -1,10 +1,8 @@
-'''version 1.5
-Fix default list error
-Added error handling for decoding problems.
-adding flattened dictionary
-Fixing dict column size problem'''
+import openpyxl
+from openpyxl.styles import PatternFill, Font
 
-MAXWIDTH = 70
+MAXWIDTH = 200
+PADDING = 2
 
 def get_lol_len(DataStruct):
     '''return the number of fields in a dict'''
@@ -53,6 +51,7 @@ def get_data_type(DataStruct):
         elif type(DataStruct) is dict:
                 return 'Dict'
 
+
 def get_XLS_filename(xlsReportName):
         # Check the report name has the correct ext
         if '.' in xlsReportName:
@@ -60,10 +59,10 @@ def get_XLS_filename(xlsReportName):
                 FileSplit = xlsReportName.split('.')[:-1]
                 FileSplit.append('xlsx')
                 xlsReportName = '.'.join(FileSplit)
-
         else:
             xlsReportName += '.xlsx'
         return xlsReportName
+
 
 def to_excel(num):
     AZLIST = [chr(x + 65) for x in range(0,26)]
@@ -75,7 +74,8 @@ def to_excel(num):
         num = int(num / 26)
         ColsList.append(AZLIST[mod-1])
     return ''.join(reversed(ColsList))
-    
+
+
 def get_headings(DataStruct, Headings):
         # If column headings were provided use them.
         if len(Headings) > 0:
@@ -99,6 +99,7 @@ def get_headings(DataStruct, Headings):
             Headings = [x for x in DataStruct]
 
         return Headings
+
 
 def get_colspec(DataStruct, Headings=None):
 
@@ -129,8 +130,6 @@ def get_colspec(DataStruct, Headings=None):
                     if len(str(Item)) > ColSpec[Col]['Width']:
                         ColSpec[Col]['Width'] = len(Item)
 
-
-                        
     # If we are writing a list of dicts to excel.
     elif get_data_type(DataStruct) == 'ListofDicts':
         # Go through each item in the Headings list
@@ -146,20 +145,27 @@ def get_colspec(DataStruct, Headings=None):
                                     if len(str(V)) > ColSpec[Col]['Width'] < MAXWIDTH:
                                             ColSpec[Col]['Width'] = len(str(V))
 
+    # Add padding to the column width
+    # Find any columns with width > MAXWIDTH and change them
+    for Col in ColSpec:
+        ColSpec[Col]['Width'] += PADDING
+        if ColSpec[Col]['Width'] > MAXWIDTH:
+            ColSpec[Col]['Width'] = MAXWIDTH
+
     return ColSpec
-    
+
+
 def get_col_from_h(ColSpec, Heading):
         '''find the heading and return the column'''
         for K, V in ColSpec.items():
                 if V['Heading'] == Heading:
                         return K
 
-def write_sheet(FileName, DataStruct, SheetName='Sheet1', Headings=[]):
-    import openpyxl, string
-    from openpyxl import Workbook
-    from openpyxl.styles import Color, PatternFill, Font, Border
-    from openpyxl.styles import colors
-    from openpyxl.cell import Cell
+def write_sheet(FileName, DataStruct, SheetName='Sheet1', Headings=None):
+
+    # Make Headings an empty list if none are passed in
+    if Headings == None:
+        Headings = []
 
     GRAYFILL = PatternFill(start_color='808080', end_color='808080',fill_type='solid')
 
@@ -200,6 +206,25 @@ def write_sheet(FileName, DataStruct, SheetName='Sheet1', Headings=[]):
     wb.save(get_XLS_filename(FileName))
     wb.close()
 
+
+if __name__=='__main__':
+    # Create test data
+    # List of lists
+    Report = []
+    for rown in range(0,10):
+        Report.append([f'Row {rown} Col {x}' * 3 for x in range(0,5)])
+
+    write_sheet('test_lists.xlsx', Report, SheetName='Lists')
+
+    Headings = [f'Col {x} Heading' for x in range(0,5)]
+    write_sheet('test_lists_w_headings.xlsx', Report, SheetName='Lists', Headings=Headings)
+
+    # List of Dicts
+    Report = []
+    for rown in range(0,10):
+        Report.append({f'Col {x} Heading':'Dummy value' for x in range(0,5)})
+
+    write_sheet('test_dicts.xlsx', Report, SheetName='Dicts')
 
 
     
